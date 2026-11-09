@@ -1,0 +1,288 @@
+import {
+  originalTreatment,
+  type Draft,
+  type Layout,
+  type LayoutId,
+  type TextStyle,
+} from "./types";
+const type = (
+  value: string,
+  font: string,
+  size: number,
+  align: CanvasTextAlign = "left",
+  lineHeight = 1.2,
+): TextStyle => ({
+  value,
+  font,
+  size,
+  color: "#292a27",
+  align,
+  lineHeight,
+  letterSpacing: 0,
+});
+export const FONTS = [
+  "Caveat",
+  "La Belle Aurore",
+  "Courier Prime",
+  "DM Sans",
+  "Nanum Pen Script",
+];
+export const LAYOUTS: Layout[] = [
+  {
+    id: "bali",
+    name: "Bali Postcards",
+    order: [0, 1, 2, 4, 3],
+    description: "Five places. One little piece of everywhere.",
+    width: 1600,
+    height: 1200,
+    slots: [
+      { x: 490, y: 180, w: 420, h: 270, rotation: -3, border: 12 },
+      { x: 190, y: 470, w: 440, h: 280, rotation: -9, border: 13 },
+      { x: 540, y: 510, w: 285, h: 390, rotation: 10, border: 12 },
+      { x: 930, y: 270, w: 290, h: 400, rotation: 8, border: 12 },
+      { x: 1030, y: 650, w: 390, h: 255, rotation: -7, border: 12 },
+    ],
+    texts: [
+      {
+        id: "caption",
+        label: "Travel note",
+        x: 420,
+        y: 1020,
+        w: 950,
+        h: 110,
+        default: type(
+          "somewhere between here and a little forever.",
+          "Courier Prime",
+          25,
+        ),
+      },
+    ],
+  },
+  {
+    id: "mixtape",
+    name: "Mixtape Memories",
+    description: "For the people who feel like your favorite song.",
+    width: 1600,
+    height: 1400,
+    slots: [
+      { x: 185, y: 125, w: 470, h: 575, rotation: 7, border: 24, bottom: 96 },
+      {
+        x: 180,
+        y: 770,
+        w: 470,
+        h: 375,
+        rotation: -10,
+        border: 24,
+        bottom: 100,
+      },
+      { x: 620, y: 600, w: 290, h: 395, rotation: 5, border: 17, bottom: 62 },
+    ],
+    texts: [
+      {
+        id: "intro",
+        label: "Typewriter note",
+        x: 1010,
+        y: 180,
+        w: 410,
+        h: 170,
+        default: type(
+          "if these days had a soundtrack,\nit would always sound like you.",
+          "Courier Prime",
+          25,
+          "left",
+          1.5,
+        ),
+      },
+      {
+        id: "cassette",
+        label: "Cassette label",
+        x: 1030,
+        y: 552,
+        w: 370,
+        h: 50,
+        default: type("songs for the way home", "Courier Prime", 24, "center"),
+      },
+      {
+        id: "note",
+        label: "Handwritten note",
+        x: 1000,
+        y: 1000,
+        w: 430,
+        h: 200,
+        default: type("play it again.\nall the good parts.", "Caveat", 46),
+      },
+      {
+        id: "date",
+        label: "Print inscription",
+        x: 647,
+        y: 1020,
+        w: 270,
+        h: 60,
+        default: type("side A / us", "Caveat", 24),
+      },
+    ],
+  },
+  {
+    id: "joyride",
+    name: "Joyride Journal",
+    description: "A two-frame story for the long way home.",
+    width: 1200,
+    height: 1700,
+    slots: [
+      { x: 160, y: 350, w: 880, h: 490, rotation: 0, border: 0 },
+      { x: 160, y: 858, w: 880, h: 490, rotation: 0, border: 0 },
+    ],
+    texts: [
+      {
+        id: "heading",
+        label: "Handwritten heading",
+        x: 170,
+        y: 140,
+        w: 880,
+        h: 170,
+        default: type(
+          "we took the long way home",
+          "La Belle Aurore",
+          57,
+          "center",
+        ),
+      },
+      {
+        id: "left",
+        label: "Left margin label",
+        x: 35,
+        y: 817,
+        w: 115,
+        h: 65,
+        default: type("ESTD", "DM Sans", 19, "center"),
+      },
+      {
+        id: "right",
+        label: "Right margin label",
+        x: 1050,
+        y: 817,
+        w: 115,
+        h: 65,
+        default: type(
+          String(new Date().getFullYear()),
+          "DM Sans",
+          19,
+          "center",
+        ),
+      },
+      {
+        id: "footer",
+        label: "Editorial caption",
+        x: 240,
+        y: 1440,
+        w: 720,
+        h: 175,
+        default: {
+          ...type(
+            "NO PARTICULAR DESTINATION.\nJUST THE OPEN ROAD,\nAND A DAY TO CALL OUR OWN.",
+            "DM Sans",
+            25,
+            "center",
+            1.35,
+          ),
+          letterSpacing: 2,
+        },
+      },
+    ],
+  },
+  {
+    id: "handwritten",
+    name: "Handwritten Moment",
+    description: "One photograph. All the things it makes you feel.",
+    width: 1200,
+    height: 1300,
+    slots: [{ x: 100, y: 100, w: 1000, h: 620, rotation: 0, border: 0 }],
+    texts: [
+      {
+        id: "message",
+        label: "Your handwritten message",
+        x: 120,
+        y: 800,
+        w: 960,
+        h: 390,
+        default: type(
+          "of all the little things\nI want to remember,\nthis one stays with me.",
+          "Caveat",
+          67,
+          "left",
+          1.25,
+        ),
+      },
+    ],
+  },
+];
+export const LAYOUT_MAP = new Map(LAYOUTS.map((l) => [l.id, l]));
+export function createDraft(id: LayoutId): Draft {
+  const l = LAYOUT_MAP.get(id)!;
+  return {
+    id: crypto.randomUUID(),
+    layoutId: id,
+    name: l.name,
+    slots: l.slots.map(() => ({
+      ...originalTreatment(),
+      photoId: null,
+      zoom: 1,
+      panX: 0,
+      panY: 0,
+      rotation: 0,
+      x: 0,
+      y: 0,
+      scale: 1,
+    })),
+    texts: Object.fromEntries(l.texts.map((t) => [t.id, { ...t.default }])),
+    updatedAt: new Date().toISOString(),
+  };
+}
+export const PHRASES: Record<string, string[]> = {
+  Romantic: [
+    "somewhere between then and now, there was always you.",
+    "our favorite kind of ordinary",
+    "a thousand little reasons to stay",
+  ],
+  Nostalgic: [
+    "a little piece of yesterday",
+    "the world was softer then",
+    "the days we never wanted to end",
+  ],
+  Friendship: [
+    "same people. another beautiful chapter.",
+    "we were happy here",
+    "the good kind of getting lost",
+  ],
+  Memories: [
+    "little moments, forever",
+    "another day worth remembering",
+    "this one stays with me",
+  ],
+  Travel: [
+    "wish you were here",
+    "collected miles, collected memories",
+    "somewhere we will always carry",
+  ],
+  Summer: [
+    "everything felt like summer",
+    "salt on our skin, sun in our stories",
+    "nothing to do but remember this",
+  ],
+  Music: [
+    "side A: the days with you",
+    "play the good parts again",
+    "a song for every version of us",
+  ],
+  Birthdays: [
+    "another year of little wonders",
+    "save a little room for joy",
+    "the best part is still ahead",
+  ],
+  "Personal notes": [
+    "I hope you remember how this felt.",
+    "keep this somewhere safe",
+    "a small reminder of a very good day",
+  ],
+  Minimal: ["here, now.", "stay awhile", "kept forever"],
+};

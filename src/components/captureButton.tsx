@@ -92,8 +92,10 @@ function ensureStyles() {
   document.head.appendChild(el);
 }
 
-export interface CaptureButtonProps
-  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "style"> {
+export interface CaptureButtonProps extends Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  "style"
+> {
   size?: number;
   style?: CSSProperties;
 }
@@ -101,7 +103,7 @@ export interface CaptureButtonProps
 export const CaptureButton = forwardRef<HTMLButtonElement, CaptureButtonProps>(
   function CaptureButton(
     { size = 96, className, style, type = "button", children, ...rest },
-    ref
+    ref,
   ) {
     useInsertionEffect(ensureStyles, []);
 
@@ -116,7 +118,7 @@ export const CaptureButton = forwardRef<HTMLButtonElement, CaptureButtonProps>(
         {children}
       </button>
     );
-  }
+  },
 );
 
 export default CaptureButton;

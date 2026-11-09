@@ -97,8 +97,10 @@ function ensureStyles() {
   document.head.appendChild(el);
 }
 
-export interface ControlButtonProps
-  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "style" | "children"> {
+export interface ControlButtonProps extends Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  "style" | "children"
+> {
   icon: string;
   label: string;
   size?: number;
@@ -108,8 +110,17 @@ export interface ControlButtonProps
 
 export const ControlButton = forwardRef<HTMLButtonElement, ControlButtonProps>(
   function ControlButton(
-    { icon, label, size = 56, iconSize, className, style, type = "button", ...rest },
-    ref
+    {
+      icon,
+      label,
+      size = 56,
+      iconSize,
+      className,
+      style,
+      type = "button",
+      ...rest
+    },
+    ref,
   ) {
     useInsertionEffect(ensureStyles, []);
 
@@ -127,7 +138,7 @@ export const ControlButton = forwardRef<HTMLButtonElement, ControlButtonProps>(
         <Icon icon={icon} width={px} height={px} aria-hidden="true" />
       </button>
     );
-  }
+  },
 );
 
 export default ControlButton;
