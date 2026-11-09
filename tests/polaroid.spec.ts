@@ -502,7 +502,7 @@ test("camera permission errors give actionable recovery without fake captures", 
   ).toBeVisible();
 });
 
-test("camera captures native resolution, mirrors front photos, supports retake and fills only its intended slot", async ({
+test("camera captures native resolution, mirrors front photos and directly fills only its intended slot", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -551,16 +551,9 @@ test("camera captures native resolution, mirrors front photos, supports retake a
   await expect(page.getByText("Photo 2 of 2", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Take photo", exact: true }).click();
   await expect(
-    page.getByRole("dialog", { name: "Capture review" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Retake", exact: true }).click();
-  await page.getByRole("button", { name: "Take photo", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Keep photograph", exact: true })
-    .click();
-  await expect(
     page.getByRole("heading", { name: "Joyride Journal", exact: true }),
   ).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Download composition" }),
   ).toBeEnabled();

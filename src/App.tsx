@@ -6,7 +6,6 @@ import {
   Download,
   Image as ImageIcon,
   Layers,
-  RotateCcw,
   SlidersHorizontal,
   SwitchCamera,
   Upload,
@@ -75,7 +74,6 @@ export default function App() {
     [saveState, setSaveState] = useState("Saved on this device"),
     [picker, setPicker] = useState<number | null>(null),
     [target, setTarget] = useState<SlotTarget | null>(null),
-    [review, setReview] = useState<Photo | null>(null),
     [exporting, setExporting] = useState<{
       photo?: Photo;
       draft?: Draft;
@@ -244,55 +242,23 @@ export default function App() {
     setBusy(true);
     if (!muted) soundRef.current?.play();
     setFlash(true);
+    const capturedTreatment = structuredClone(treatment);
     try {
       const blob = await cameraRef.current?.capture();
       if (!blob)
         throw new Error("Wait for the camera to be ready, then try again.");
-      const url = URL.createObjectURL(blob);
-      setReview({
-        id: "review",
-        blob,
-        thumbnail: blob,
-        url,
-        thumbnailUrl: url,
-        width: 0,
-        height: 0,
-        name: "A little moment",
-        takenAt: new Date().toISOString(),
-        kind: "capture",
-        treatment: structuredClone(treatment),
-      });
-    } catch (e) {
-      setError(friendlyError(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-  function dismissReview() {
-    if (review) URL.revokeObjectURL(review.url);
-    setReview(null);
-  }
-  async function acceptCapture() {
-    if (!review) return;
-    setBusy(true);
-    try {
       const p = await addPhoto(
-        review.blob,
+        blob,
         "capture",
         `Moment ${photos.filter((p) => p.kind === "capture").length + 1}`,
-        review.treatment,
+        capturedTreatment,
       );
       if (target) {
         assign(p, target);
         setEditing(true);
         changePage("layouts");
         setTarget(null);
-      } else {
-        setSelectedPhoto(p);
-        setTreatment(p.treatment);
-        setCameraActive(false);
       }
-      dismissReview();
       setNotice("Photograph saved");
     } catch (e) {
       setError(friendlyError(e));
@@ -643,52 +609,6 @@ export default function App() {
           onClose={() => setPicker(null)}
         />
       )}
-      {review && (
-        <Modal title="Capture review" onClose={dismissReview}>
-          <div className="capture-review">
-            <Preview
-              photo={review}
-              treatment={review.treatment}
-              width={700}
-              label="Capture review"
-            />
-          </div>
-          <p className="description">
-            {target
-              ? `Photo ${target.index + 1} of ${draft?.slots.length}. Keep it or give it another try.`
-              : "Keep this photograph or take another."}
-          </p>
-          <div className="modal-actions">
-            <button className="button" disabled={busy} onClick={acceptCapture}>
-              <Check size={16} />
-              {busy ? "Saving…" : "Keep photograph"}
-            </button>
-            <button
-              className="button secondary"
-              onClick={dismissReview}
-              disabled={busy}
-            >
-              <RotateCcw size={15} />
-              Retake
-            </button>
-          </div>
-          <button
-            className="text-button"
-            disabled={busy}
-            onClick={() => {
-              dismissReview();
-              if (target) {
-                const index = target.index;
-                setTarget(null);
-                changePage("layouts");
-                setPicker(index);
-              } else requestUpload();
-            }}
-          >
-            Choose a different image
-          </button>
-        </Modal>
-      )}
       {controlsOpen && (
         <Modal title="Adjust photo" onClose={() => setControlsOpen(false)}>
           <TreatmentControls
@@ -754,7 +674,7 @@ export default function App() {
           {notice}
         </div>
       )}
-      {busy && !review && (
+      {busy && (
         <div className="working-indicator" role="status">
           Developing your photograph…
         </div>

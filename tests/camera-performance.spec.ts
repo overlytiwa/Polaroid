@@ -1,5 +1,32 @@
 import { test, expect } from "@playwright/test";
 
+test("captures save directly to the gallery and leave the camera ready for another shot", async ({
+  page,
+}) => {
+  await movingCamera(page);
+  const shutter = page.getByRole("button", { name: "Take photo", exact: true });
+  for (const count of [1, 2]) {
+    await shutter.click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: `Gallery ${count}`, exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(shutter).toBeEnabled();
+    expect(
+      await page.locator("video").evaluate((video: HTMLVideoElement) => {
+        const stream = video.srcObject as MediaStream;
+        return stream.active && stream.getVideoTracks()[0].readyState === "live";
+      }),
+    ).toBe(true);
+  }
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Gallery 2", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
 test("still-photo capture keeps sensor detail independent of preview resolution", async ({
   page,
 }) => {
@@ -22,9 +49,6 @@ test("still-photo capture keeps sensor detail independent of preview resolution"
   });
   await movingCamera(page);
   await page.getByRole("button", { name: "Take photo", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Keep photograph", exact: true })
-    .click();
   await expect(
     page.getByRole("button", { name: "Gallery 1", exact: true }),
   ).toBeVisible();
@@ -352,8 +376,9 @@ test("shutter audio starts before slow image encoding finishes", async ({
   await page.getByRole("button", { name: "Take photo", exact: true }).click();
   await expect(page.locator(".shutter-flash")).toBeVisible();
   await expect(
-    page.getByRole("dialog", { name: "Capture review" }),
+    page.getByRole("button", { name: "Gallery 1", exact: true }),
   ).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   const events = await page.evaluate(
     () =>
       (

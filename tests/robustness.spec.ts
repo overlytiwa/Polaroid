@@ -1,6 +1,78 @@
 import { test, expect } from "@playwright/test";
 import { writeFileSync } from "node:fs";
 
+test("mobile dialogs stay centered and scroll within the viewport", async ({
+  page,
+}, info) => {
+  await page.goto("/");
+  await page
+    .locator("input[type=file]")
+    .setInputFiles("public/samples/lake.jpg");
+  await expect(
+    page.getByRole("button", { name: "Gallery 1", exact: true }),
+  ).toBeVisible();
+  const checkDialog = async (name: string) => {
+    const dialog = page.getByRole("dialog", { name, exact: true });
+    await expect(dialog).toBeVisible();
+    await expect
+      .poll(() =>
+        dialog.evaluate((element) => {
+          const r = element.getBoundingClientRect();
+          return Math.max(
+            Math.abs(r.left + r.width / 2 - innerWidth / 2),
+            Math.abs(r.top + r.height / 2 - innerHeight / 2),
+          );
+        }),
+      )
+      .toBeLessThan(2);
+    const bounds = await dialog.evaluate((element) => {
+      const r = element.getBoundingClientRect();
+      return {
+        withinViewport:
+          r.left >= 12 &&
+          r.right <= innerWidth - 12 &&
+          r.top >= 12 &&
+          r.bottom <= innerHeight - 12,
+        scrollable: getComputedStyle(element).overflowY,
+      };
+    });
+    expect(bounds.withinViewport).toBe(true);
+    expect(bounds.scrollable).toBe("auto");
+    if (page.viewportSize()?.width === 390)
+      await page.screenshot({
+        path: info.outputPath(`mobile-${name.replaceAll(/[^a-z]/gi, "-")}.png`),
+      });
+  };
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 320, height: 568 },
+    { width: 844, height: 390 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.getByRole("button", { name: "Adjust", exact: true }).click();
+    await checkDialog("Adjust photo");
+    await page.getByRole("button", { name: "Close Adjust photo" }).click();
+    await page.getByRole("button", { name: "Download", exact: true }).click();
+    await checkDialog("Download");
+    await page.getByRole("button", { name: "Close Download" }).click();
+    await page.getByRole("button", { name: "Gallery 1", exact: true }).click();
+    await page.getByRole("button", { name: "View lake", exact: true }).click();
+    await checkDialog("Photo");
+    await page.getByRole("button", { name: "Delete photograph" }).click();
+    await checkDialog("Remove this photograph?");
+    await page.getByRole("button", { name: "Keep it", exact: true }).click();
+    await page.getByRole("button", { name: "Layouts", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Choose Handwritten Moment, 1 photos" })
+      .click();
+    await page.getByRole("button", { name: "Choose photo", exact: true }).click();
+    await checkDialog("Choose photo 1");
+    await page.getByRole("button", { name: "Close Choose photo 1" }).click();
+    await page.getByRole("button", { name: "All layouts", exact: true }).click();
+    await page.getByRole("button", { name: "Camera", exact: true }).click();
+  }
+});
+
 test("photo picker restores keyboard focus when closed", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Layouts", exact: true }).click();
@@ -125,9 +197,6 @@ test("a five-photo layout mixes gallery, uploads and camera without replacing ot
     page.getByRole("button", { name: "Take photo", exact: true }),
   ).toBeEnabled();
   await page.getByRole("button", { name: "Take photo", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Keep photograph", exact: true })
-    .click();
   await expect(page.getByText("3 / 5 photos", { exact: true })).toBeVisible();
   for (const i of [4, 5]) {
     await pick(i);
