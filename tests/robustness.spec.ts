@@ -305,8 +305,11 @@ test("camera screen contains only photography controls", async ({
     await expect
       .poll(() =>
         page
-          .locator(".camera-surface canvas")
-          .evaluate((c: HTMLCanvasElement) => c.width > c.height),
+          .locator(".camera-surface")
+          .evaluate(
+            (element: HTMLElement) =>
+              element.clientWidth > element.clientHeight,
+          ),
       )
       .toBe(width > 700);
     await page.screenshot({

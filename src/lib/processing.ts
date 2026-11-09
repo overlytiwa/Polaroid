@@ -19,10 +19,18 @@ export function canvasOf(width: number, height: number) {
   c.height = Math.max(1, Math.round(height));
   return c;
 }
-export function contextOf(c: HTMLCanvasElement) {
+export type ProcessingCanvas = HTMLCanvasElement | OffscreenCanvas;
+export function contextOf(c: HTMLCanvasElement): CanvasRenderingContext2D;
+export function contextOf(
+  c: OffscreenCanvas,
+): OffscreenCanvasRenderingContext2D;
+export function contextOf(
+  c: ProcessingCanvas,
+): CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+export function contextOf(c: ProcessingCanvas) {
   const ctx = c.getContext("2d", { willReadFrequently: true });
   if (!ctx) throw new Error("Your browser could not create an image canvas.");
-  return ctx;
+  return ctx as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 }
 export function toBlob(
   c: HTMLCanvasElement,
@@ -98,12 +106,19 @@ export function cover(
 }
 
 /** One pipeline for video, uploads, thumbnails, gallery, and exports. Originals never change. */
-export function processCanvas(
-  canvas: HTMLCanvasElement,
+export function processCanvas<T extends ProcessingCanvas>(
+  canvas: T,
   treatment: Treatment,
   date = "",
 ) {
   const filter = FILTER_MAP.get(treatment.filterId) ?? FILTER_MAP.get("none")!;
+  const effectCanvas = (width: number, height: number): ProcessingCanvas =>
+    typeof OffscreenCanvas !== "undefined" && canvas instanceof OffscreenCanvas
+      ? new OffscreenCanvas(
+          Math.max(1, Math.round(width)),
+          Math.max(1, Math.round(height)),
+        )
+      : canvasOf(width, height);
   const grade: Grade = filter.grade ?? {},
     legacy = filter.legacy;
   const ctx = contextOf(canvas),
@@ -119,7 +134,7 @@ export function processCanvas(
   const original = ctx.getImageData(0, 0, w, h);
   // Sensor detail is deliberately limited only for digital grades; the source stays intact.
   if (grade.resolution && strength > 0 && w > grade.resolution) {
-    const small = canvasOf(grade.resolution, (h * grade.resolution) / w);
+    const small = effectCanvas(grade.resolution, (h * grade.resolution) / w);
     contextOf(small).drawImage(canvas, 0, 0, small.width, small.height);
     ctx.drawImage(small, 0, 0, w, h);
   }
@@ -252,7 +267,7 @@ export function processCanvas(
   const bloom = (grade.bloom ?? 0) + a.bloom / 100,
     halation = (grade.halation ?? 0) + a.halation / 100;
   if (bloom > 0 || halation > 0) {
-    const mask = canvasOf(w, h),
+    const mask = effectCanvas(w, h),
       mctx = contextOf(mask),
       m = mctx.createImageData(w, h);
     for (let i = 0; i < pixels.length; i += 4) {
@@ -344,7 +359,32 @@ export function processCanvas(
     ctx.fillRect(0, 0, w, h);
     ctx.restore();
   }
-  const dust = (grade.dust ?? 0) + a.dust / 100;
+  drawPrintMarks(
+    ctx,
+    w,
+    h,
+    (grade.dust ?? 0) + a.dust / 100,
+    grade.date ? date || "UNDATED" : null,
+  );
+  if (strength < 1) {
+    const finished = ctx.getImageData(0, 0, w, h);
+    for (let i = 0; i < pixels.length; i += 4)
+      for (let c = 0; c < 3; c++)
+        finished.data[i + c] =
+          original.data[i + c] +
+          (finished.data[i + c] - original.data[i + c]) * strength;
+    ctx.putImageData(finished, 0, 0);
+  }
+  return canvas;
+}
+
+export function drawPrintMarks(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  w: number,
+  h: number,
+  dust: number,
+  date: string | null,
+) {
   if (dust) {
     ctx.save();
     ctx.fillStyle = "rgba(245,241,230,.55)";
@@ -368,7 +408,7 @@ export function processCanvas(
     }
     ctx.restore();
   }
-  if (grade.date) {
+  if (date) {
     ctx.save();
     ctx.font = `${Math.round(w / 35)}px 'Courier Prime', monospace`;
     ctx.fillStyle = "#f3a04f";
@@ -380,14 +420,4 @@ export function processCanvas(
     );
     ctx.restore();
   }
-  if (strength < 1) {
-    const finished = ctx.getImageData(0, 0, w, h);
-    for (let i = 0; i < pixels.length; i += 4)
-      for (let c = 0; c < 3; c++)
-        finished.data[i + c] =
-          original.data[i + c] +
-          (finished.data[i + c] - original.data[i + c]) * strength;
-    ctx.putImageData(finished, 0, 0);
-  }
-  return canvas;
 }

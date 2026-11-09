@@ -6,6 +6,10 @@ A local-first vintage camera and photographic scrapbook using the original React
 
 Switch front/rear cameras, swipe to change filters, adjust intensity, keep or retake captures, mute the original shutter sound, and import photographs. The front preview and capture use matching mirroring. Captures use source-camera resolution, cropped to match the viewfinder, rather than saving the small preview canvas. Desktop access is supported without a decorative loading delay.
 
+Live video requests 30 FPS at 1080p rather than forcing a 4K stream. An unfiltered view uses the browser's video compositor directly. Filtered video uses reusable WebGL2 shaders and video-frame callbacks, with adaptive preview resolution on slow/software GPUs. An OffscreenCanvas worker is the fallback, with at most one frame in flight. Background tabs stop processing. The source photo is captured independently; the sensor's still-photo API is used when available, with source-video capture as a fallback. Downloads retain the full-resolution processing path.
+
+The shutter sample is preloaded and decoded. Sound and flash start in the shutter gesture, before image capture/encoding, and leading audio silence is skipped. Filter thumbnails decode their source once, render lazily during idle time, and refresh only while the filter shelf is open.
+
 The filter browser offers search, horizontal live-image thumbnails, categories and persistent favorites. Optional controls cover exposure, contrast, saturation, temperature, tint, highlights, shadows, grain, fade, sharpness, vignette, bloom, halation, dust and light leaks. Changing a look does not overwrite the source photograph.
 
 ## 133 looks
@@ -14,7 +18,7 @@ All **12 original filters** remain: No Filter, Nashville, Chief Keef, Nuke, Pres
 
 **121 additional creative looks** cover film stocks, instant color, early digital cameras and phones, disposable cameras, cinema, black-and-white printing and experimental processes. Categories: Original, Existing, Film, Instant, Digital, Disposable, Cinematic, Black & White and Experimental.
 
-The shared renderer combines tone curves, saturation, split-toning, highlight/shadow response, luminance-weighted grain, selective highlight glow, red halation, optical falloff and specific print effects. Digital presets use limited detail, quantized color, sensor noise, sharpening, clipped tonality and flash response. Effects are chosen per look. These are artistic interpretations, not licensed, calibrated or exact stock/camera reproductions.
+The renderers share preset definitions for tone curves, saturation, split-toning, highlight/shadow response, luminance-weighted grain, selective highlight glow, red halation, optical falloff and specific print effects. Live GPU grades are tested against the full-quality image renderer. Digital presets use limited detail, quantized color, sensor noise, sharpening, clipped tonality and flash response. Effects are chosen per look. These are artistic interpretations, not licensed, calibrated or exact stock/camera reproductions.
 
 Manufacturer research informed the grade directions:
 
@@ -69,7 +73,7 @@ npx playwright install chromium firefox webkit
 npm test
 ```
 
-`npm run test:chromium` runs Chromium only. Playwright uses isolated profiles and port 5174. The suite checks original-filter compatibility, all preset outputs and zero-intensity recovery, imports and EXIF orientation, favorites, simulated high-resolution capture/mirroring, retakes, mixed-source photo-slot workflows, typography, PNG/JPEG downloads, drafts, migration, complete-layout rendering and preview/export agreement, errors and responsive overflow. Simulation checks the application pipeline; it does not certify physical cameras or every mobile device. On Windows, WebKit lacks the canvas camera-stream synthesis API, so its three simulation-dependent camera tests skip; storage, imports, layouts and downloads are still tested there.
+`npm run test:chromium` runs Chromium only. Playwright uses isolated profiles and port 5174. The suite checks original-filter compatibility, all preset outputs and zero-intensity recovery, imports and EXIF orientation, favorites, simulated high-resolution capture/mirroring, retakes, mixed-source photo-slot workflows, typography, PNG/JPEG downloads, drafts, migration, complete-layout rendering and preview/export agreement, errors and responsive overflow. Camera regressions check delivered-frame throughput, GPU/export color agreement, worker fallback, shutter timing during slow encoding, and independent still-photo resolution. Simulation checks the application pipeline; it does not certify physical cameras or every mobile device. On Windows, WebKit lacks the canvas camera-stream synthesis API, so its simulation-dependent camera tests skip; storage, imports, layouts and downloads are still tested there.
 
 Camera access needs HTTPS in production or localhost in development. The development server binds to localhost. `HTTPS=true` enables the optional SSL plugin for a trusted development certificate setup; another device also needs an appropriate Vite host setting. Do not bypass certificate warnings; use a trusted certificate or HTTPS deployment.
 

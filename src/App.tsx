@@ -37,6 +37,7 @@ import {
   type Treatment,
 } from "./lib/types";
 import shutterSoundUrl from "./assets/sounds/camera_shutter.mp3";
+import { createShutterSound } from "./lib/shutter";
 import iconUrl from "./assets/images/icon.png";
 import "./App.css";
 
@@ -95,7 +96,7 @@ export default function App() {
     uploadTarget = useRef<SlotTarget | null>(null),
     draftRef = useRef(draft),
     saveQueue = useRef(Promise.resolve()),
-    audioRef = useRef<HTMLAudioElement | null>(null);
+    soundRef = useRef<ReturnType<typeof createShutterSound> | null>(null);
   useEffect(() => {
     draftRef.current = draft;
   }, [draft]);
@@ -116,10 +117,23 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [flash]);
   useEffect(() => {
+    const sound = createShutterSound(shutterSoundUrl);
+    soundRef.current = sound;
+    sound.preload();
     return () => {
-      audioRef.current?.pause();
+      sound.dispose();
+      soundRef.current = null;
     };
   }, []);
+  useEffect(() => {
+    if (cameraReady) soundRef.current?.prepare();
+  }, [cameraReady]);
+  useEffect(
+    () => () => {
+      if (thumbnail.startsWith("blob:")) URL.revokeObjectURL(thumbnail);
+    },
+    [thumbnail],
+  );
   // Writes are queued in edit order, so a slower earlier save cannot replace a newer one.
   useEffect(() => {
     if (!draft || !ready) return;
@@ -228,17 +242,12 @@ export default function App() {
   async function capture() {
     if (busy || !cameraReady) return;
     setBusy(true);
+    if (!muted) soundRef.current?.play();
+    setFlash(true);
     try {
       const blob = await cameraRef.current?.capture();
       if (!blob)
         throw new Error("Wait for the camera to be ready, then try again.");
-      if (!muted) {
-        audioRef.current ??= new Audio(shutterSoundUrl);
-        audioRef.current.currentTime = 0;
-        audioRef.current.volume = 0.45;
-        audioRef.current.play().catch(() => {});
-      }
-      setFlash(true);
       const url = URL.createObjectURL(blob);
       setReview({
         id: "review",
@@ -401,6 +410,7 @@ export default function App() {
                         onReady={readyCallback}
                         onSwipe={swipe}
                         onThumbnail={thumbnailCallback}
+                        thumbnailsEnabled={filtersOpen}
                       />
                     )}
                     {flash && <div className="shutter-flash" />}
@@ -435,6 +445,9 @@ export default function App() {
                         </button>
                       ) : (
                         <CaptureButton
+                          onPointerDown={() => {
+                            if (!muted) soundRef.current?.unlock();
+                          }}
                           size={66}
                           onClick={capture}
                           aria-label="Take photo"

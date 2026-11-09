@@ -1,17 +1,57 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Search, Star, X } from "lucide-react";
 import { CATEGORIES, FILTERS, type Filter } from "../lib/filters";
 import { canvasOf, contextOf, cover, processCanvas } from "../lib/processing";
 import { originalTreatment } from "../lib/types";
-function Thumbnail({ source, filter }: { source: string; filter: Filter }) {
+const sources = new Map<string, Promise<HTMLImageElement>>();
+function sharedImage(source: string) {
+  if (!sources.has(source)) {
+    const image = new Image();
+    image.src = source;
+    sources.set(
+      source,
+      image.decode().then(() => image),
+    );
+    if (sources.size > 3) sources.delete(sources.keys().next().value!);
+  }
+  return sources.get(source)!;
+}
+const thumbnailJobs = new Map<HTMLCanvasElement, () => void>();
+let scheduled = false;
+function queueThumbnail(canvas: HTMLCanvasElement, draw: () => void) {
+  thumbnailJobs.set(canvas, draw);
+  if (scheduled) return;
+  scheduled = true;
+  const drain = () => {
+    const first = thumbnailJobs.entries().next().value;
+    if (first) {
+      thumbnailJobs.delete(first[0]);
+      first[1]();
+    }
+    scheduled = false;
+    if (thumbnailJobs.size) {
+      const next = thumbnailJobs.entries().next().value!;
+      queueThumbnail(next[0], next[1]);
+    }
+  };
+  if ("requestIdleCallback" in window)
+    window.requestIdleCallback(drain, { timeout: 300 });
+  else setTimeout(drain, 16);
+}
+const Thumbnail = memo(function Thumbnail({
+  source,
+  filter,
+}: {
+  source: string;
+  filter: Filter;
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
-    const canvas = ref.current!,
-      image = new Image();
+    const canvas = ref.current!;
     let cancelled = false,
       visible = false;
-    const draw = () => {
-      if (cancelled || !visible || !image.naturalWidth) return;
+    const draw = (image: HTMLImageElement) => {
+      if (cancelled || !visible) return;
       const c = canvasOf(128, 96);
       cover(
         contextOf(c),
@@ -27,20 +67,26 @@ function Thumbnail({ source, filter }: { source: string; filter: Filter }) {
     const observer = new IntersectionObserver(
       (entries) => {
         visible = entries[0].isIntersecting;
-        if (visible) draw();
+        if (visible)
+          sharedImage(source)
+            .then((image) => {
+              if (!cancelled && visible)
+                queueThumbnail(canvas, () => draw(image));
+            })
+            .catch(() => {});
+        else thumbnailJobs.delete(canvas);
       },
       { rootMargin: "100px" },
     );
     observer.observe(canvas);
-    image.onload = draw;
-    image.src = source;
     return () => {
       cancelled = true;
+      thumbnailJobs.delete(canvas);
       observer.disconnect();
     };
   }, [source, filter]);
   return <canvas ref={ref} width={128} height={96} aria-hidden="true" />;
-}
+});
 export default function FilterBrowser({
   selected,
   onSelect,

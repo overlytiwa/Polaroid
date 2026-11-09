@@ -74,9 +74,15 @@ main {
 }
 .camera-source {
   position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.camera-filter-output {
+  position: absolute;
+  inset: 0;
   pointer-events: none;
 }
 .viewfinder-top {
